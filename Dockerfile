@@ -1,28 +1,31 @@
 FROM node:18-alpine
 
+# Install pnpm with the specific version from package.json
+RUN npm install -g pnpm@8.15.5
+
 WORKDIR /app
 
-# Copy package.json first (without requiring package-lock.json)
-COPY package.json ./
+# Copy root configuration files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Check if yarn.lock exists and use yarn if it does, otherwise use npm
-COPY yarn.lock* package-lock.json* ./
-RUN if [ -f yarn.lock ]; then \
-      yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then \
-      npm ci; \
-    else \
-      npm install; \
-    fi
+# Create directory structure for workspaces
+RUN mkdir -p apis packages
 
-# Copy source code
+# Copy package.json files for workspace packages
+COPY apis/*/package.json ./apis/
+COPY packages/*/package.json ./packages/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy the rest of the source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the project
+RUN pnpm build
 
 # Expose the port
 EXPOSE 3000
 
-# Start the server
-CMD ["npm", "start"]
+# Start the Vercel API (which is the most suitable for standalone deployment)
+CMD ["pnpm", "--filter", "braintrust-proxy", "start"]
