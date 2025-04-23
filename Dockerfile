@@ -2,9 +2,18 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json ./
-RUN npm ci
+# Copy package.json first (without requiring package-lock.json)
+COPY package.json ./
+
+# Check if yarn.lock exists and use yarn if it does, otherwise use npm
+COPY yarn.lock* package-lock.json* ./
+RUN if [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then \
+      npm ci; \
+    else \
+      npm install; \
+    fi
 
 # Copy source code
 COPY . .
